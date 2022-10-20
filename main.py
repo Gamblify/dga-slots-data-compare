@@ -12,7 +12,7 @@ def main() -> int:
     csc_raw_data = read_csc_file()
 
     csc_parser = CSCParser()
-    csc_parsed_data = csc_parser.parse(csc_raw_data)
+    csc_parsed_data = csc_parser.parse(data=csc_raw_data)
 
     return 0
 
