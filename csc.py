@@ -194,4 +194,4 @@ def group_data(csc_data: list):
     # pprint.pprint(list(ret_value.items())[:1])
     # pprint.pprint(ret_value)
 
-    # return ret_value
+    return ret_value
