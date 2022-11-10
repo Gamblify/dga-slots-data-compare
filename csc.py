@@ -1,9 +1,11 @@
 import pprint
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timedelta
 
 
 def parse_csc_start_record(start_record: str):
+    assert start_record.startswith(' ' * 6), 'Bad start padding for CSC record: ' + start_record
+    start_record = start_record[6:]
     # TODO use start_record when start_date and end_date are being used
     pass
 
@@ -105,22 +107,23 @@ def parse_csc_file(csc_filename: str):
     return parse_csc_lines(start_csc_record, end_csc_record, csc_records)
 
 
-def minmax_diff(counters: list):
-    if len(counters) == 0:
-        return 0
-    min_v = max_v = counters[0]
-    for val in counters:
-        if val < min_v:
+def minmax_time_diff(machine_data: list):
+    assert len(machine_data) != 0, "There is no data for machine"
+
+    min_v = max_v = machine_data[0]
+
+    for val in machine_data:
+        if val['datetime'] < min_v['datetime']:
             min_v = val
 
-        if val > max_v:
+        if val['datetime'] > max_v['datetime']:
             max_v = val
 
     # print(max_v, min_v)
-    return max_v - min_v
+    return min_v, max_v
 
 
-def split_by_location(csc_records):
+def split_by_location(csc_records: list):
     data_by_location = defaultdict(list)
 
     for record in csc_records:
@@ -154,11 +157,19 @@ def split_by_location(csc_records):
         total_money_played = 0
         total_money_won = 0
 
-        for machine_record in v.values():
-            total_money_inserted += minmax_diff([item['moneyInserted'] for item in machine_record])
-            total_money_paid_out += minmax_diff([item['moneyPaidOut'] for item in machine_record])
-            total_money_played += minmax_diff([item['moneyPaidOut'] for item in machine_record])
-            total_money_won += minmax_diff([item['moneyWon'] for item in machine_record])
+        for machine_records in v.values():
+            min_time_record, max_time_record = minmax_time_diff(machine_records)
+            # print(min_time_record)
+            # print(max_time_record)
+            assert min_time_record['datetime'].hour == 0 and min_time_record['datetime'].minute == 0, \
+                'min_time_record is not midnight record' + str(min_time_record)
+            assert max_time_record['datetime'].hour == 0 and max_time_record['datetime'].minute == 0, \
+                'max_time_record is not midnight record' + str(max_time_record)
+
+            total_money_inserted += max_time_record['moneyInserted'] - min_time_record['moneyInserted']
+            total_money_paid_out += max_time_record['moneyPaidOut'] - min_time_record['moneyPaidOut']
+            total_money_played += max_time_record['moneyPaidOut'] - min_time_record['moneyPaidOut']
+            total_money_won += max_time_record['moneyWon'] - min_time_record['moneyWon']
 
         ret_value[k] = {
             'moneyInserted': total_money_inserted,
@@ -177,10 +188,18 @@ def split_by_location(csc_records):
 
 def group_data(csc_data: list):
     data_by_date = defaultdict(list)
+    td1_hour = timedelta(hours=1)
 
     for record in csc_data:
         # pprint.pprint(record)
-        data_by_date[record['datetime'].date()].append({k: record[k] for k in record if k != 'datetime'})
+        record_datetime = record['datetime']
+        # new_value = {k: record[k] for k in record if k != 'datetime'}
+        new_value = record
+        data_by_date[record_datetime.date()].append(new_value)
+        if record_datetime.time().hour == 0:
+            assert record_datetime.time().minute == 0, "Record is not hourly: " + str(record)
+            prev_day = record_datetime - td1_hour
+            data_by_date[prev_day.date()].append(new_value)
 
     # pprint.pprint(list(data_by_date.keys())[:3])
     # pprint.pprint(list(data_by_date.items())[:1])

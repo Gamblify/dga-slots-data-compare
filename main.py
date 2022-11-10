@@ -1,7 +1,7 @@
 import argparse
 import os
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import time
 
@@ -9,6 +9,12 @@ import pprint
 
 import safe
 import csc
+
+
+def daterange(start_date, end_date):
+    for n in range(int((end_date - start_date).days)):
+        yield start_date + timedelta(days=n)
+
 
 parser = argparse.ArgumentParser()
 
@@ -49,7 +55,7 @@ try:
 
     csc_by_date_location = csc.group_data(csc_data)
     # pprint.pprint(csc_by_date_location)
-    pprint.pprint(list(csc_by_date_location.items())[0])
+    # pprint.pprint(list(csc_by_date_location.items())[0])
 
     v_print(f'Starting to parse SAFE files in {args.safe_dir}')
     start_time = time.time()
@@ -67,7 +73,54 @@ try:
     d_print("--- SAFE files parse time %s seconds ---" % (time.time() - start_time))
 
     # pprint.pprint(safe_data)
-    pprint.pprint(list(safe_data.items())[0])
+    # pprint.pprint(list(safe_data.items())[0])
+
+    for single_date in daterange(args.start_date, args.end_date + timedelta(days=1)):
+        if single_date not in csc_by_date_location:
+            v_print(f'There is no data for in CSC for day {single_date}. Will not compare this date')
+            continue
+
+        if single_date not in safe_data:
+            v_print(f'There is no data for in SAFE for day {single_date}. Will not compare this date')
+            continue
+
+        # print(single_date)
+        # print(csc_by_date_location[single_date])
+        # print(safe_data[single_date])
+        csc_location_data = csc_by_date_location[single_date]
+        safe_location_data = safe_data[single_date]
+
+        union_location = set(csc_location_data.keys()).union(safe_location_data.keys())
+
+        # pprint.pprint(union_location)
+
+        for loc in union_location:
+            if loc not in csc_location_data:
+                v_print(f'There is no data for in CSC for location {loc}. Will not compare this location')
+                continue
+
+            if loc not in safe_location_data:
+                v_print(f'There is no data for in SAFE for location {loc}. Will not compare this location')
+                continue
+
+            csc_comp_data = csc_location_data[loc]
+            safe_comp_data = safe_location_data[loc]
+            # CSC has 'moneyPlayed' and 'moneyWon' as data which is not compared
+            # SAFE has 'numberOfPlays' and 'jackpotMoneyWon' as data which is not compared
+
+            print(f'Comparing CSC and SAFE data for {single_date} for locationMainNumber: {loc}')
+            if csc_comp_data['moneyInserted'] != safe_comp_data['moneyInserted']:
+                print(f"\tDifferent 'moneyInserted' in CSC({csc_comp_data['moneyInserted']}) "
+                      f"and SAFE({safe_comp_data['moneyInserted']}) ")
+            else:
+                print(f"\tSame 'moneyInsertedData'")
+
+            if csc_comp_data['moneyPaidOut'] != safe_comp_data['moneyPaidOut']:
+                print(f"\tDifferent 'moneyPaidOut' in CSC({csc_comp_data['moneyPaidOut']}) "
+                      f"and SAFE({safe_comp_data['moneyPaidOut']}) ")
+            else:
+                print(f"\tSame 'moneyPaidOut'")
+
 
 except Exception as e:
     print(e)
