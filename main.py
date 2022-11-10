@@ -27,8 +27,8 @@ parser.add_argument('--start-date', required=True,
 parser.add_argument('--end-date', default=datetime.now().date(),
                     type=lambda d: datetime.strptime(d, '%Y-%m-%d').date(),
                     help='End date in the format YYYY-MM-DD. If not provided it will be today')
-parser.add_argument('--csc-extension', default='msg', help='File extensions for the CSC files')
-parser.add_argument('--safe-extension', default='xml', help='File extensions for the SAFE files')
+parser.add_argument('--csc-extension', default='msg', help='File extensions for the CSC files. default=msg')
+parser.add_argument('--safe-extension', default='xml', help='File extensions for the SAFE files. default=xml')
 
 
 try:
